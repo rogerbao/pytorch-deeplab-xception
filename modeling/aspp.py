@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 
+from torchsummary import summary
+
 class _ASPPModule(nn.Module):
     def __init__(self, inplanes, planes, kernel_size, padding, dilation, BatchNorm):
         super(_ASPPModule, self).__init__()
@@ -93,3 +95,12 @@ class ASPP(nn.Module):
 
 def build_aspp(backbone, output_stride, BatchNorm):
     return ASPP(backbone, output_stride, BatchNorm)
+
+
+if __name__ == "__main__":
+    input = torch.rand(16, 320, 32, 32)
+    model = ASPP(backbone='mobilenet', output_stride=16, BatchNorm=nn.BatchNorm2d)
+    model.cuda()
+    summary(model, (320, 8, 8))
+    # output = model(input)
+    # print(output.size())

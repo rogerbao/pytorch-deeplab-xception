@@ -11,7 +11,7 @@ class VOCSegmentation(Dataset):
     """
     PascalVoc dataset
     """
-    NUM_CLASSES = 21
+    NUM_CLASSES = 3
 
     def __init__(self,
                  args,
@@ -25,8 +25,10 @@ class VOCSegmentation(Dataset):
         """
         super().__init__()
         self._base_dir = base_dir
-        self._image_dir = os.path.join(self._base_dir, 'JPEGImages')
-        self._cat_dir = os.path.join(self._base_dir, 'SegmentationClass')
+        # self._image_dir = os.path.join(self._base_dir, 'JPEGImages')
+        self._image_dir = self._base_dir
+        # self._cat_dir = os.path.join(self._base_dir, 'SegmentationClass')
+        self._cat_dir = self._base_dir
 
         if isinstance(split, str):
             self.split = [split]
@@ -47,8 +49,9 @@ class VOCSegmentation(Dataset):
                 lines = f.read().splitlines()
 
             for ii, line in enumerate(lines):
-                _image = os.path.join(self._image_dir, line + ".jpg")
-                _cat = os.path.join(self._cat_dir, line + ".png")
+                lines_tmp = line.split('/')
+                _image = os.path.join(self._image_dir, lines_tmp[0], lines_tmp[1], 'images', lines_tmp[2] + ".jpeg")
+                _cat = os.path.join(self._cat_dir, lines_tmp[0], lines_tmp[1], 'labels', lines_tmp[2] + ".png")
                 assert os.path.isfile(_image)
                 assert os.path.isfile(_cat)
                 self.im_ids.append(line)
@@ -78,6 +81,10 @@ class VOCSegmentation(Dataset):
     def _make_img_gt_point_pair(self, index):
         _img = Image.open(self.images[index]).convert('RGB')
         _target = Image.open(self.categories[index])
+        _target_np = np.array(_target)
+        _target_np[_target_np == 127] = 1  # face
+        _target_np[_target_np == 255] = 2  # hand
+        _target = Image.fromarray(_target_np)
 
         return _img, _target
 
@@ -136,7 +143,7 @@ if __name__ == '__main__':
             plt.imshow(img_tmp)
             plt.subplot(212)
             plt.imshow(segmap)
-
+            plt.savefig('temp.jpg')
         if ii == 1:
             break
 

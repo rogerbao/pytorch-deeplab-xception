@@ -56,17 +56,23 @@ class Trainer(object):
             weight = None
         self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
         self.model, self.optimizer = model, optimizer
-        
+
         # Define Evaluator
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
-        self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
-                                            args.epochs, len(self.train_loader))
+        if args.lr_scheduler == 'step':
+            self.scheduler = LR_Scheduler(mode=args.lr_scheduler, base_lr=args.lr, num_epochs=args.epochs,
+                                          iters_per_epoch=len(self.train_loader), lr_step=args.lr_step)
+        else:
+            self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
+                                          args.epochs, len(self.train_loader))
 
         # Using cuda
         if args.cuda:
-            self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
-            patch_replication_callback(self.model)
+            print('device_ids', self.args.gpu_ids)
+            if len(self.args.gpu_ids) > 1:
+                self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
+                patch_replication_callback(self.model)
             self.model = self.model.cuda()
 
         # Resuming checkpoint
@@ -170,7 +176,8 @@ class Trainer(object):
             self.best_pred = new_pred
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
+                'state_dict': self.model.state_dict(),
+                # 'state_dict': self.model.module.state_dict(),
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
@@ -185,7 +192,7 @@ def main():
     parser.add_argument('--dataset', type=str, default='pascal',
                         choices=['pascal', 'coco', 'cityscapes'],
                         help='dataset name (default: pascal)')
-    parser.add_argument('--use-sbd', action='store_true', default=True,
+    parser.add_argument('--use-sbd', action='store_true', default=False,
                         help='whether to use SBD dataset (default: True)')
     parser.add_argument('--workers', type=int, default=4,
                         metavar='N', help='dataloader threads')
@@ -219,6 +226,8 @@ def main():
     parser.add_argument('--lr-scheduler', type=str, default='poly',
                         choices=['poly', 'step', 'cos'],
                         help='lr scheduler mode: (default: poly)')
+    parser.add_argument('--lr-step', type=int, default=None,
+                        help='lr scheduler step. Not multistep)')
     parser.add_argument('--momentum', type=float, default=0.9,
                         metavar='M', help='momentum (default: 0.9)')
     parser.add_argument('--weight-decay', type=float, default=5e-4,

@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from modeling.sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 
+from torchsummary import summary
+
 class Decoder(nn.Module):
     def __init__(self, num_classes, backbone, BatchNorm):
         super(Decoder, self).__init__()
@@ -55,3 +57,13 @@ class Decoder(nn.Module):
 
 def build_decoder(num_classes, backbone, BatchNorm):
     return Decoder(num_classes, backbone, BatchNorm)
+
+
+if __name__ == "__main__":
+    input = torch.rand(16, 256, 32, 32)
+    low_level_feature = torch.rand(16, 24, 128, 128)
+    model = Decoder(num_classes=3, backbone='mobilenet', BatchNorm=nn.BatchNorm2d)
+    model.cuda()
+    summary(model, [(256, 8, 8), (24, 32, 32)])
+    # output = model(input, low_level_feature)
+    # print(output.size())
